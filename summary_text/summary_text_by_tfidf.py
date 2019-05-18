@@ -25,10 +25,9 @@ class SummaryText:
         """
         通过一段文本转换为关键句子列表
             1、将文本转换为句子
-            2、生成分词，过滤停止词
-            3、统计词频
-            4、根据词频最高的关键词，给句子打分
-            5、返回分数最高的句子
+            2、计算词tfidf矩阵
+            3、计算句子权重、句子位置矩阵、句子相似度权重
+            4、获得权重最高的句子
         :param text: 文本，段落
         :return list: 关键句子
         """
@@ -88,6 +87,11 @@ class SummaryText:
         return sentences_position_weight
 
     def _sentences_similarity_weight(self, tfidf_matrix):
+        """
+        计算句子相似矩阵
+        :param tfidf_matrix: 词tfidf矩阵
+        :return:
+        """
         senctences_scores = collections.defaultdict(lambda: 0.)
         for index, s1 in enumerate(tfidf_matrix):
             score = np.sum([self._similarity(s1, s2) for s2 in tfidf_matrix])
@@ -100,18 +104,40 @@ class SummaryText:
         return senctences_scores
 
     def _similarity(self, s1, s2):
+        """
+        计算句子相似度，余弦相似定律
+        :param s1:
+        :param s2:
+        :return:
+        """
         return np.sum(s1 * s2) / (1e-6 + np.sqrt(np.sum(s1 * s1)) * np.sqrt(np.sum(s2 * s2)))
 
     def _sentences_rank(self, sentences_weight, sentences_position_weight, sentences_scores, feature_weight=[1, 1, 1]):
+        """
+        计算句子排名
+        :param sentences_weight:
+        :param sentences_position_weight:
+        :param sentences_scores:
+        :param feature_weight:
+        :return:
+        """
         weight = {index: (
                 feature_weight[0] * weight + feature_weight[1] * sentences_position_weight[index] + feature_weight[
             2] * sentences_scores[index]) for index, weight in sentences_weight.items()}
         return sorted(weight.items(), key=lambda item: item[1], reverse=True)
 
     def _summarization(self, sentences, sentences_rank, topN_ratio=0.3):
+        """
+        生成摘要
+        :param sentences:
+        :param sentences_rank:
+        :param topN_ratio:
+        :return:
+        """
         topN = int(len(sentences_rank) * topN_ratio)
         sentences_index = sorted([index for index, _ in sentences_rank[:topN]])
         return [sentences[index] for index in sentences_index]
+
 
 if __name__ == '__main__':
     text = """
